@@ -23,28 +23,46 @@ public class PgmImage {
         this.pixels = new int[height][width];
     }
 
+
     public static PgmImage read(File file) throws IOException {
 
-        try (Scanner sc = new Scanner(file)) {
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
 
-            String magic = sc.next();
-            if (!magic.equals("P2")) {
+            // 1. First line: must be P2
+            String magic = br.readLine();
+            if (magic == null || !magic.trim().equals("P2")) {
                 throw new IOException("Not a valid P2 PGM file");
             }
 
-            if (sc.hasNext("#")) {
-                sc.nextLine(); 
+            // 2. Skip blank lines + comments (# ...)
+            String line = br.readLine();
+            while (line != null && (line.trim().isEmpty() || line.trim().startsWith("#"))) {
+                line = br.readLine();
             }
 
-            int width = sc.nextInt();
-            int height = sc.nextInt();
+            if (line == null) {
+                throw new IOException("Unexpected end of file after header");
+            }
 
-            int maxGray = sc.nextInt();
+            String[] dims = line.trim().split("\\s+");
+            int width = Integer.parseInt(dims[0]);
+            int height = Integer.parseInt(dims[1]);
+
+            line = br.readLine();
+            while (line.trim().isEmpty() || line.trim().startsWith("#")) {
+                line = br.readLine();
+            }
+            int maxGray = Integer.parseInt(line.trim());
 
             PgmImage img = new PgmImage(width, height, maxGray);
 
+            // 5. Read pixel values with Scanner
+            Scanner sc = new Scanner(br);
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
+                    if (!sc.hasNextInt()) {
+                        throw new IOException("Unexpected end of pixel data");
+                    }
                     img.pixels[i][j] = sc.nextInt();
                 }
             }
@@ -52,6 +70,7 @@ public class PgmImage {
             return img;
         }
     }
+
 
     public void write(File file) throws IOException {
         try (PrintWriter out = new PrintWriter(new FileWriter(file))) {
@@ -67,7 +86,7 @@ public class PgmImage {
                 for (int j = 0; j < width; j++) {
                     String v = String.valueOf(pixels[i][j]);
 
-
+                    // Ensure max 70 characters per line
                     if (charCount + v.length() > 70) {
                         out.println();
                         charCount = 0;
@@ -82,4 +101,3 @@ public class PgmImage {
         }
     }
 }
-
